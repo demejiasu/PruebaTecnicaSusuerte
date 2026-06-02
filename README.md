@@ -30,6 +30,41 @@
 
 El servidor estara disponible en http://localhost:8000.
 
+## Decisiones tecnicas (Parte 1 - PHP y Recursividad)
+
+### Funcion recursiva calcularPremioAcumulado
+
+Se implemento la funcion en el archivo php/calcular_premio.php. La funcion recorre un arbol de premios anidados sin usar bucles, solo recursion.
+
+**Estructura de cada nodo:**
+- monto: valor numerico del premio en ese nivel.
+- hijos: arreglo de nodos hijos (puede estar vacio).
+
+**Algoritmo:**
+1. Caso base: si el arreglo de niveles esta vacio, retorna 0. Esto detiene la recursion cuando se han procesado todos los nodos de un nivel.
+2. Toma el primer elemento del arreglo con array_shift, que reduce el arreglo original.
+3. Suma el monto del nodo actual mas el resultado de procesar recursivamente sus hijos.
+4. Suma el resultado de procesar recursivamente los nodos restantes del mismo nivel.
+
+**Por que array_shift en lugar de foreach:**
+El enunciado pide explicitamente no usar bucles. array_shift extrae el primer elemento y acorta el arreglo, permitiendo que la recursion procese los elementos uno por uno sin iteracion.
+
+**Resultado con el ejemplo del enunciado:**
+- Nodo raiz: 1000
+  - Hijo 1: 500
+  - Hijo 2: 250
+    - Hijo: 100
+- Total: 1000 + 500 + 250 + 100 = 1850
+
+**Explicacion del caso base:**
+El caso base es cuando empty($niveles) retorna true, es decir, cuando el arreglo de niveles no tiene elementos. En ese punto se retorna 0 y se termina la recursion.
+
+**Que ocurre con una estructura muy profunda (limite de stack):**
+PHP tiene un limite de recursion configurable mediante xdebug.max_nesting_level o la directiva de XDebug. En entornos de produccion sin XDebug, el limite lo impone la memoria del stack de C. Si el arbol es demasiado profundo (tipicamente mas de 100-200 niveles en PHP estandar, o 256-512 con XDebug por defecto), se produce un error "Maximum function nesting level reached" o un segmentation fault. Para arboles muy profundos seria necesario convertir la funcion a una iterativa usando una pila explicita (array con array_push/array_pop), pero para la mayoria de los casos de uso reales la recursion es suficiente.
+
+Para ejecutar la funcion:
+    php php/calcular_premio.php
+
 ## Decisiones tecnicas (Paso 1 - Configuracion inicial)
 
 ### Framework elegido: Django + Django REST Framework
