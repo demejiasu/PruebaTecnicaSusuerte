@@ -104,6 +104,79 @@ Al registrar un tiquete que descuenta saldo del usuario, ocurren dos operaciones
 
 Si no se usa una transaccion, una fallo entre el paso 1 y el paso 2 dejaria datos inconsistentes (tiquete registrado sin descuento). Con una transaccion, si algo falla se hace ROLLBACK y la base de datos vuelve al estado anterior. En Django esto se implementa con el decorador/context manager transaction.atomic().
 
+## Decisiones tecnicas (Paso 3 - API REST)
+
+### Diseno de los endpoints
+
+Se crearon dos endpoints REST que cumplen con los requisitos de la Parte 3:
+
+**POST /api/tiquetes/**
+
+Recibe un JSON con usuario_id y monto. La logica interna es:
+
+1. Validar que el JSON tenga los campos requeridos (usuario_id y monto). Si falta alguno, responde 400.
+2. Buscar al usuario por ID. Si no existe, responde 404.
+3. Verificar que el saldo del usuario sea suficiente para cubrir el monto del tiquete. Si no, responde 422.
+4. Dentro de una transaccion atomica, descontar el saldo del usuario y crear el tiquete con estado 'pendiente'.
+5. Si todo sale bien, responde 201 con los datos del tiquete creado.
+6. Si ocurre un error inesperado (excepcion en la transaccion), responde 500.
+
+**GET /api/usuarios/{id}/tiquetes/**
+
+1. Verificar que el usuario existe. Si no, responde 404.
+2. Obtener todos los tiquetes del usuario ordenados por fecha de creacion descendente.
+3. Responder 200 con la lista de tiquetes en formato JSON.
+
+### Por que usar @api_view en lugar de ViewSets
+
+Se eligio usar funciones decoradas con @api_view en lugar de las clases ViewSet o ModelViewSet de DRF por las siguientes razones:
+
+- El enunciado pide codigos HTTP especificos y distintos para cada situacion. Con funciones es mas claro y explicito devolver cada Response con su status code.
+- La logica de negocio (validar saldo, descontar dentro de una transaccion) es mas facil de leer y mantener en una funcion que en una vista generica.
+- Para dos endpoints simples no se justifica la abstraccion de un ViewSet.
+
+### Transaccion atomica con transaction.atomic()
+
+Para el endpoint POST se uso el context manager transaction.atomic() de Django. Esto asegura que tanto el descuento de saldo como la creacion del tiquete se ejecuten como una sola operacion atomica. Si cualquiera de las dos falla, se hace rollback automaticamente y la base de datos queda como estaba antes.
+
+Se uso Usuario.objects.filter(pk=...).update() en lugar de usuario.save() para evitar un race condition: filter+update se ejecuta en una sola consulta SQL, mientras que get+save requiere dos consultas (SELECT y UPDATE) y deja una ventana para que otro proceso modifique el saldo entre medio.
+
+### Codigos HTTP implementados
+
+| Situacion | Codigo HTTP | Mensaje |
+|-----------|-------------|---------|
+| Tiquete creado correctamente | 201 | Datos del tiquete en JSON |
+| JSON invalido o campos faltantes | 400 | "JSON invalido o campos faltantes" |
+| Usuario no existe | 404 | "Usuario no encontrado" |
+| Saldo insuficiente | 422 | "Saldo insuficiente" |
+| Error inesperado del servidor | 500 | "Error inesperado del servidor" |
+
+### Datos de prueba
+
+El archivo tickets/seed_data.py contiene un script para poblar la base de datos con datos de prueba. Se ejecuta con:
+
+    python manage.py shell < tickets/seed_data.py
+
+Los datos incluyen 5 usuarios (con saldos entre 150 y 3000) y varios tiquetes en estados ganador y perdedor. Un usuario (Pedro Ramirez) no tiene tiquetes, lo que permite probar la consulta de la Parte 2.3.
+
+### Ejemplos de uso con curl
+
+**Crear un tiquete (exitoso):**
+
+    curl -X POST http://localhost:8000/api/tiquetes/ \
+      -H "Content-Type: application/json" \
+      -d '{"usuario_id": 1, "monto": 100}'
+
+**Crear un tiquete (saldo insuficiente):**
+
+    curl -X POST http://localhost:8000/api/tiquetes/ \
+      -H "Content-Type: application/json" \
+      -d '{"usuario_id": 4, "monto": 9999}'
+
+**Listar tiquetes de un usuario:**
+
+    curl http://localhost:8000/api/usuarios/1/tiquetes/
+
 ## Avance hasta ahora
 
 - Proyecto Django inicializado con Python 3.14 y Django 6.0.2.
@@ -114,6 +187,12 @@ Si no se usa una transaccion, una fallo entre el paso 1 y el paso 2 dejaria dato
 - Modelos Usuario y Tiquete creados con campos, claves foraneas e indices apropiados.
 - Migraciones generadas y aplicadas a la base de datos.
 - Archivo docs/sql/consultas.sql con las consultas de la Parte 2.
-- Documentacion de decisiones tecnicas sobre el esquema de datos.
+- Endpoint POST /api/tiquetes/ con manejo de codigos 201, 400, 404, 422, 500.
+- Endpoint GET /api/usuarios/{id}/tiquetes/ con manejo de codigos 200 y 404.
+- Transaccion atomica con transaction.atomic() para descontar saldo y crear tiquete.
+- Datos de prueba en tickets/seed_data.py.
+- Panel de administracion Django en /admin/ para gestionar usuarios y tiquetes.
+- Documentacion de decisiones tecnicas sobre la API REST.
+- Trabajo realizado en rama feature/api-tiquetes.
 
-El siguiente paso sera crear los endpoints de la API (Parte 3) y exponerlos via Django REST Framework.
+El siguiente paso sera crear la pagina web frontend (Parte 4) con formulario y lista de tiquetes.
