@@ -247,6 +247,50 @@ Se creo una pagina web en tickets/templates/tickets/index.html que se sirve en l
 
 La pagina se sirve a traves de una vista TemplateView de Django que renderiza el template. Esto permite que el frontend y el backend compartan el mismo servidor en desarrollo sin necesidad de configurar CORS ni servidores separados.
 
+## Decisiones tecnicas (Parte 6 - Mejora Creativa: Validacion Antifraude)
+
+### Que se implemento
+
+Se agrego un modulo de validacion antifraude en tickets/antifraud.py que se ejecuta antes de procesar cualquier creacion de tiquete. Contiene dos mecanismos:
+
+**1. Rate limiting (limite de frecuencia):**
+- Un usuario no puede crear mas de 5 tiquetes en una ventana de 60 segundos.
+- Si excede el limite, se bloquea automaticamente por 5 minutos.
+- Se usa el cache de Django en memoria (locmem) para llevar el contador, que se reinicia solo despues de la ventana de tiempo.
+- La respuesta HTTP es 429 (Too Many Requests) con un mensaje explicativo.
+- Esto evita que un script automatizado pueda inundar el sistema de tiquetes en poco tiempo.
+
+**2. Validacion de monto sospechoso:**
+- Antes de crear un tiquete, se calcula el promedio de los ultimos 10 tiquetes del usuario.
+- Si el monto actual supera el doble del promedio historico, se rechaza la operacion.
+- La respuesta HTTP es 409 (Conflict) con un mensaje explicativo.
+- Esto detecta comportamientos anormales, como un usuario que siempre apuesta montos pequenos y de repente intenta apostar una cantidad muy grande.
+
+### Por que se eligio esta mejora
+
+- Tiene valor directo para el negocio: protege tanto al sistema como a los usuarios de actividades fraudulentas.
+- Es facil de justificar: cualquier sistema de apuestas o tiquetes necesita controles antifraude basicos para ser viable en produccion.
+- Usa recursos minimos: el cache en memoria no requiere base de datos adicional.
+- Se integra de forma no invasiva: las validaciones se ejecutan antes de la logica existente sin modificar el flujo de transacciones.
+
+### Si tuviera mas tiempo (mejoras adicionales que dejaria pendientes)
+
+- Almacenar los bloqueos en base de datos en lugar de cache en memoria, para que persistan incluso si el servidor se reinicia.
+- Agregar un sistema de notificaciones al administrador cuando se detecte actividad sospechosa (por email o en un panel de administracion).
+- Implementar un puntaje de riesgo por usuario que considere multiples factores (frecuencia, monto, hora del dia, ubicacion geografica) en lugar de solo dos reglas independientes.
+- Crear una pagina de administracion para ver usuarios bloqueados y liberarlos manualmente.
+
+## Si tuviera mas tiempo (reflexion general sobre todo el proyecto)
+
+Ademas de la validacion antifraude, hay varias mejoras que implementaria si tuviera mas tiempo:
+
+- Paginacion en el endpoint GET /api/usuarios/{id}/tiquetes/ para manejar grandes volumenes de datos.
+- Autenticacion y autorizacion con JWT para que cada usuario solo pueda ver y crear sus propios tiquetes.
+- Pruebas automatizadas (unitarias y de integracion) con pytest y el cliente de prueba de Django REST Framework.
+- Contenedor Docker para facilitar la instalacion y ejecucion en cualquier entorno.
+- Migrar de SQLite a PostgreSQL para mejor rendimiento y concurrencia en produccion.
+- Un frontend mas completo con Vue.js o React para mejor experiencia de usuario.
+
 ## Avance hasta ahora
 
 - Proyecto Django inicializado con Python 3.14 y Django 6.0.2.
@@ -257,12 +301,10 @@ La pagina se sirve a traves de una vista TemplateView de Django que renderiza el
 - Modelos Usuario y Tiquete creados con campos, claves foraneas e indices apropiados.
 - Migraciones generadas y aplicadas a la base de datos.
 - Archivo docs/sql/consultas.sql con las consultas de la Parte 2.
-- Endpoint POST /api/tiquetes/ con manejo de codigos 201, 400, 404, 422, 500.
+- Endpoint POST /api/tiquetes/ con manejo de codigos 201, 400, 404, 422, 500 y los nuevos 409, 429.
 - Endpoint GET /api/usuarios/{id}/tiquetes/ con manejo de codigos 200 y 404.
 - Transaccion atomica con transaction.atomic() para descontar saldo y crear tiquete.
 - Datos de prueba en tickets/seed_data.py.
 - Panel de administracion Django en /admin/ para gestionar usuarios y tiquetes.
 - Pagina web frontend en http://localhost:8000/ con formulario, mensajes diferenciados y lista de tiquetes en el DOM sin recargar la pagina.
-- Documentacion de decisiones tecnicas sobre el frontend.
-
-El siguiente paso sera implementar la mejora creativa (Parte 6).
+- Modulo de validacion antifraude con rate limiting (429) y deteccion de montos sospechosos (409).

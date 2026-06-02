@@ -6,6 +6,10 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from tickets.antifraud import (
+    verificar_monto_sospechoso,
+    verificar_rate_limit,
+)
 from tickets.models import Tiquete, Usuario
 from tickets.serializers import TiqueteInputSerializer, TiqueteSerializer
 
@@ -19,6 +23,10 @@ def crear_tiquete(request):
     """
     POST /api/tiquetes/
     Crea un tiquete y descuenta el monto del saldo del usuario en una transaccion.
+
+    Incluye validacion antifraude:
+    - Rate limiting: maximo 5 tiquetes por ventana de 60 segundos.
+    - Monto sospechoso: si el monto supera el doble del promedio historico del usuario.
     """
     # Validar que el JSON sea valido y contenga los campos requeridos
     serializer = TiqueteInputSerializer(data=request.data)
@@ -38,6 +46,22 @@ def crear_tiquete(request):
         return Response(
             {"error": "Usuario no encontrado"},
             status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Validacion antifraude 1: Rate limiting
+    rate_check = verificar_rate_limit(usuario_id)
+    if not rate_check["permitido"]:
+        return Response(
+            {"error": rate_check["mensaje"]},
+            status=rate_check["codigo"],
+        )
+
+    # Validacion antifraude 2: Monto sospechoso
+    monto_check = verificar_monto_sospechoso(usuario_id, monto)
+    if not monto_check["permitido"]:
+        return Response(
+            {"error": monto_check["mensaje"]},
+            status=monto_check["codigo"],
         )
 
     # Verificar que el saldo sea suficiente
