@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Tiquetes</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4a90d9;
+            box-shadow: 0 0 0 2px rgba(74,144,217,0.2);
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4a90d9;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #357abd;
+        }
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+        #mensaje {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 4px;
+            display: none;
+            font-size: 14px;
+        }
+        #mensaje.success {
+            display: block;
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        #mensaje.error {
+            display: block;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        #mensaje.warning {
+            display: block;
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        #mensaje.info {
+            display: block;
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .lista-tiquetes {
+            margin-top: 30px;
+        }
+        .lista-tiquetes h2 {
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+        #tiquetes-lista {
+            list-style: none;
+        }
+        #tiquetes-lista li {
+            padding: 12px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tiquete-info {
+            flex: 1;
+        }
+        .tiquete-estado {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .estado-pendiente {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .estado-ganador {
+            background: #d4edda;
+            color: #155724;
+        }
+        .estado-perdedor {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sistema de Tiquetes</h1>
+        <p class="subtitle">Registra un nuevo tiquete y consulta los tiquetes de un usuario.</p>
+
+        <form id="form-tiquete">
+            <div class="form-group">
+                <label for="usuario_id">ID del Usuario</label>
+                <input type="number" id="usuario_id" name="usuario_id" min="1" required placeholder="Ej: 1">
+            </div>
+            <div class="form-group">
+                <label for="monto">Monto a apostar</label>
+                <input type="number" id="monto" name="monto" min="0.01" step="0.01" required placeholder="Ej: 100.00">
+            </div>
+            <button type="submit" id="btn-enviar">Enviar Tiquete</button>
+        </form>
+
+        <div id="mensaje"></div>
+
+        <div class="lista-tiquetes">
+            <h2>Tiquetes Registrados</h2>
+            <ul id="tiquetes-lista">
+                <li style="color: #999; text-align: center; padding: 20px; list-style: none;">
+                    No hay tiquetes registrados aun. Envia uno desde el formulario.
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('form-tiquete');
+        const btnEnviar = document.getElementById('btn-enviar');
+        const mensajeDiv = document.getElementById('mensaje');
+        const listaTiquetes = document.getElementById('tiquetes-lista');
+
+        function mostrarMensaje(texto, tipo) {
+            mensajeDiv.textContent = texto;
+            mensajeDiv.className = tipo;
+            mensajeDiv.style.display = 'block';
+            setTimeout(() => {
+                mensajeDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function agregarTiqueteALista(tiquete) {
+            const placeholder = listaTiquetes.querySelector('li[style*="text-align: center"]');
+            if (placeholder) {
+                placeholder.remove();
+            }
+
+            const li = document.createElement('li');
+            const fecha = new Date(tiquete.creado_en).toLocaleString('es-CO', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            let estadoClass = 'estado-pendiente';
+            if (tiquete.estado === 'ganador') estadoClass = 'estado-ganador';
+            if (tiquete.estado === 'perdedor') estadoClass = 'estado-perdedor';
+
+            li.innerHTML = `
+                <div class="tiquete-info">
+                    <strong>Tiquete #${tiquete.id}</strong> - Usuario ID: ${tiquete.usuario_id || (tiquete.usuario ? tiquete.usuario.id : '?')}
+                    <br>
+                    <small>Monto: $${parseFloat(tiquete.monto).toFixed(2)} - ${fecha}</small>
+                </div>
+                <span class="tiquete-estado ${estadoClass}">${tiquete.estado}</span>
+            `;
+
+            listaTiquetes.prepend(li);
+        }
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const usuario_id = parseInt(document.getElementById('usuario_id').value);
+            const monto = parseFloat(document.getElementById('monto').value);
+
+            if (!usuario_id || usuario_id < 1) {
+                mostrarMensaje('El ID del usuario debe ser un numero mayor a 0.', 'warning');
+                return;
+            }
+            if (!monto || monto <= 0) {
+                mostrarMensaje('El monto debe ser un numero mayor a 0.', 'warning');
+                return;
+            }
+
+            btnEnviar.disabled = true;
+            btnEnviar.textContent = 'Enviando...';
+
+            try {
+                const response = await fetch('/api/tiquetes/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ usuario_id, monto }),
+                });
+
+                const data = await response.json();
+
+                if (response.status === 201) {
+                    mostrarMensaje(
+                        `Tiquete #${data.id} creado exitosamente. Monto: $${parseFloat(data.monto).toFixed(2)}. Saldo restante del usuario: $${parseFloat(data.usuario.saldo).toFixed(2)}.`,
+                        'success'
+                    );
+                    agregarTiqueteALista(data);
+                    document.getElementById('monto').value = '';
+                } else if (response.status === 400) {
+                    mostrarMensaje('Error: ' + (data.error || 'JSON invalido o campos faltantes.'), 'error');
+                } else if (response.status === 404) {
+                    mostrarMensaje('Error: Usuario con ID ' + usuario_id + ' no encontrado.', 'warning');
+                } else if (response.status === 422) {
+                    mostrarMensaje('Error: Saldo insuficiente. El usuario no tiene fondos suficientes para este monto.', 'warning');
+                } else if (response.status === 500) {
+                    mostrarMensaje('Error inesperado del servidor. Intenta de nuevo mas tarde.', 'error');
+                } else {
+                    mostrarMensaje('Error inesperado: ' + (data.error || 'Codigo ' + response.status), 'error');
+                }
+            } catch (error) {
+                mostrarMensaje('Error de conexion: No se pudo conectar con el servidor. Verifica que el servidor este corriendo.', 'error');
+            } finally {
+                btnEnviar.disabled = false;
+                btnEnviar.textContent = 'Enviar Tiquete';
+            }
+        });
+    </script>
+</body>
+</html>

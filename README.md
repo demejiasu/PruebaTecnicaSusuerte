@@ -177,6 +177,41 @@ Los datos incluyen 5 usuarios (con saldos entre 150 y 3000) y varios tiquetes en
 
     curl http://localhost:8000/api/usuarios/1/tiquetes/
 
+## Decisiones tecnicas (Paso 4 - Frontend)
+
+### Diseno de la pagina web
+
+Se creo una pagina web en tickets/templates/tickets/index.html que se sirve en la raiz del sitio (http://localhost:8000/). La pagina contiene:
+
+**Formulario de envio:**
+- Campo para el ID del usuario (numerico, obligatorio).
+- Campo para el monto a apostar (numerico con decimales, obligatorio).
+- Boton de envio que se deshabilita mientras se procesa la solicitud para evitar envios duplicados.
+
+**Mensajes diferenciados segun codigo HTTP:**
+- Exito (201): mensaje en verde con el numero de tiquete, monto y saldo restante del usuario.
+- JSON invalido (400): mensaje en rojo.
+- Usuario no encontrado (404): mensaje en amarillo indicando el ID del usuario.
+- Saldo insuficiente (422): mensaje en amarillo.
+- Error del servidor (500): mensaje en rojo.
+- Error de conexion: mensaje en rojo si no se puede contactar al servidor.
+
+**Lista de tiquetes en el DOM:**
+- Los tiquetes creados exitosamente se agregan al inicio de la lista sin recargar la pagina.
+- Cada tiquete muestra su ID, usuario, monto, fecha de creacion y estado (con codigo de colores: pendiente en amarillo, ganador en verde, perdedor en rojo).
+- Si no hay tiquetes, se muestra un mensaje placeholder.
+
+### Por que una sola pagina HTML con JavaScript vanilla
+
+- El enunciado pide explicitamente una pagina index.html y no especifica un framework frontend.
+- JavaScript vanilla con fetch es suficiente para hacer llamadas a la API y manipular el DOM sin necesidad de librerias externas.
+- Mantiene el proyecto simple: no requiere Node.js, npm, webpack ni nada adicional para funcionar.
+- El estilo CSS esta incluido en el mismo archivo para que sea autocontenido.
+
+### Integracion con Django
+
+La pagina se sirve a traves de una vista TemplateView de Django que renderiza el template. Esto permite que el frontend y el backend compartan el mismo servidor en desarrollo sin necesidad de configurar CORS ni servidores separados.
+
 ## Avance hasta ahora
 
 - Proyecto Django inicializado con Python 3.14 y Django 6.0.2.
@@ -192,7 +227,7 @@ Los datos incluyen 5 usuarios (con saldos entre 150 y 3000) y varios tiquetes en
 - Transaccion atomica con transaction.atomic() para descontar saldo y crear tiquete.
 - Datos de prueba en tickets/seed_data.py.
 - Panel de administracion Django en /admin/ para gestionar usuarios y tiquetes.
-- Documentacion de decisiones tecnicas sobre la API REST.
-- Trabajo realizado en rama feature/api-tiquetes.
+- Pagina web frontend en http://localhost:8000/ con formulario, mensajes diferenciados y lista de tiquetes en el DOM sin recargar la pagina.
+- Documentacion de decisiones tecnicas sobre el frontend.
 
-El siguiente paso sera crear la pagina web frontend (Parte 4) con formulario y lista de tiquetes.
+El siguiente paso sera implementar la mejora creativa (Parte 6).
