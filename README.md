@@ -291,20 +291,5 @@ Ademas de la validacion antifraude, hay varias mejoras que implementaria si tuvi
 - Migrar de SQLite a PostgreSQL para mejor rendimiento y concurrencia en produccion.
 - Un frontend mas completo con Vue.js o React para mejor experiencia de usuario.
 
-## Avance hasta ahora
-
-- Proyecto Django inicializado con Python 3.14 y Django 6.0.2.
-- Django REST Framework 3.16.1 instalado y configurado.
-- Aplicacion tickets creada.
-- .gitignore configurado.
-- SQLite como base de datos de desarrollo.
-- Modelos Usuario y Tiquete creados con campos, claves foraneas e indices apropiados.
-- Migraciones generadas y aplicadas a la base de datos.
-- Archivo docs/sql/consultas.sql con las consultas de la Parte 2.
-- Endpoint POST /api/tiquetes/ con manejo de codigos 201, 400, 404, 422, 500 y los nuevos 409, 429.
-- Endpoint GET /api/usuarios/{id}/tiquetes/ con manejo de codigos 200 y 404.
-- Transaccion atomica con transaction.atomic() para descontar saldo y crear tiquete.
-- Datos de prueba en tickets/seed_data.py.
-- Panel de administracion Django en /admin/ para gestionar usuarios y tiquetes.
-- Pagina web frontend en http://localhost:8000/ con formulario, mensajes diferenciados y lista de tiquetes en el DOM sin recargar la pagina.
-- Modulo de validacion antifraude con rate limiting (429) y deteccion de montos sospechosos (409).
+## Autor
+Daniel Eduardo Mejía Suaza
